@@ -974,3 +974,9 @@ main.wrap,.site-nav .in,.site-footer{padding-left:clamp(24px,6vw,80px);padding-r
 .fd-body .fopt{padding:8px}
 .dd-opt.sel{font-weight:600}
 .dd-ck{color:var(--ink)}
+
+/* Figma-style canvas: a quiet dot grid instead of graph-paper lines */
+:root{--dot:rgba(10,14,40,.16)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--dot:rgba(255,255,255,.12)}}
+:root[data-theme="dark"]{--dot:rgba(255,255,255,.12)}
+body{background-image:radial-gradient(circle at 1px 1px,var(--dot) 1px,transparent 1.4px);background-size:24px 24px;background-position:0 0}
