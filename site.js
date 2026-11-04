@@ -588,8 +588,10 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('click', e => { const k = e.target.closest && e.target.closest('[data-kx]'); if(k){ e.preventDefault(); openKx(0); } const th = e.target.closest && e.target.closest('th[data-sort]'); if(th){ const tb = th.closest('table').tBodies[0], k = +th.dataset.sort, dir = th.dataset.dir === 'asc' ? 'desc' : 'asc'; th.closest('tr').querySelectorAll('th').forEach(h => { delete h.dataset.dir; }); th.dataset.dir = dir; const val = r => { const td = r.children[k]; return (td.dataset.v || td.textContent).trim().toLowerCase(); }; [...tb.rows].sort((a, b) => (val(a) < val(b) ? -1 : val(a) > val(b) ? 1 : 0) * (dir === 'asc' ? 1 : -1)).forEach(r => tb.appendChild(r)); return; } const cb = e.target.closest && e.target.closest('[data-car]'); if(cb){ const car = cb.closest('section').querySelector('.carousel'); if(car) car.scrollBy({left: +cb.dataset.car * car.clientWidth * 0.85, behavior: 'smooth'}); } });
   { const kb = $('#kxback'); if(kb) kb.addEventListener('click', closeKx); }
   document.addEventListener('keydown', e => { if(e.key === 'Escape'){ closeCard(); closeColl(); closeKx(); $('#whodrawer').classList.remove('on'); } });
-  const h = (location.hash || '').replace('#', ''); try{ history.replaceState({id: PAGES.includes(h) ? h : 'home', arg: null}, ''); }catch(e){} HIST = true; go(PAGES.includes(h) ? h : 'home'); HIST = false;
-  window.addEventListener('hashchange', () => { const k = (location.hash || '').replace('#', ''); if(PAGES.includes(k)) go(k); });
+  // Deep links (4 November 2026): #item/<id>, #topic/<id>, #role/<id> and #note/<path>, the forms the page's own anchors use, open on load and on a hash change, so that a card page at /cards/<id>/ can send a browser to its card. Nothing else about the routes changes.
+  const routeOf = h => { const m = /^(item|topic|role|note)\/(.+)$/.exec(h); return m ? [m[1], decodeURIComponent(m[2])] : null; };
+  const h = (location.hash || '').replace('#', ''); const r0 = routeOf(h); try{ history.replaceState(r0 ? {id: r0[0], arg: r0[1]} : {id: PAGES.includes(h) ? h : 'home', arg: null}, ''); }catch(e){} HIST = true; if(r0) go(r0[0], r0[1]); else go(PAGES.includes(h) ? h : 'home'); HIST = false;
+  window.addEventListener('hashchange', () => { const k = (location.hash || '').replace('#', ''); const r = routeOf(k); if(r) go(r[0], r[1]); else if(PAGES.includes(k)) go(k); });
 });
 
 // Custom dropdowns: replace native select menus with site-styled popovers (the select stays as the source of truth)
