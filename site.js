@@ -611,3 +611,13 @@ document.addEventListener('DOMContentLoaded', () => {
   new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => { if(n.nodeType === 1) scan(n); }))).observe(document.documentElement, {childList: true, subtree: true});
   document.addEventListener('DOMContentLoaded', () => scan(document)); scan(document);
 })();
+
+// Logo always returns to a clean home page: clears any open search and scrolls to the top
+document.addEventListener('click', e => {
+  const b = e.target.closest('.site-nav .brand'); if(!b) return;
+  e.preventDefault();
+  const q = document.getElementById('hsq'); if(q) q.value = '';
+  if(location.hash !== '#home') history.pushState(null, '', '#home');
+  go('home');
+  window.scrollTo({top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'});
+});
