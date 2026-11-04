@@ -402,7 +402,7 @@ function renderHome(){
   $('#p-home').innerHTML = `
   <section class="hero-grid${introCls}${rolesHidden ? ' roles-off' : ''}">
     <div class="hero-main"><button class="persona-pill" data-roletoggle type="button">Choose a persona</button>
-      <h1>The KERI Suite,<br><span class="serif-it">indexed.</span></h1>
+      <h1>The KERI Suite,<br><span class="serif-it">open to everyone.</span></h1>
       <p class="hero-lede">Every paper, talk, specification, repository, meeting and organization about KERI, each with a note on who it is for and how much to trust it. Tell us who you are and the page adjusts.</p>
       <form class="hero-search" id="homesearch"><input class="search" id="hsq" type="search" placeholder="search titles, authors, abstracts" aria-label="Search the index"><button class="search-go" type="submit">Search</button></form>
       <p class="hero-sub"><button class="link" data-kx type="button">▶ What is KERI? — a five-step explainer →</button></p>
@@ -567,6 +567,7 @@ function renderLicense(){
 }
 function renderAbout(){
   $('#p-about').innerHTML = `<p class="eyebrow">About this site</p><h1>What is real here, and what is not</h1>
+  <p class="lede">KERI builds authenticity into a world of fakes; this base is the way in for the people who will build it. Every paper, talk, specification and repository, open under open licenses, with a note on who it is for and how far to trust it, and a start page for whoever you are.</p>
   <div class="grid2"><div class="panel"><h3>Real</h3><ul style="margin:0;padding-left:18px;font-size:.95rem"><li>Every card, abstract, label, date and link: the shared copy of the base as it stands (${fmt(D.counts.cards)} cards).</li><li>The eight entry pages, generated from the cards by the same code that builds the reader page.</li><li>The shared notes list and the review queue's counts; every card, topic, role and note has a page of its own, built from the database.</li><li>The roles and their questions, from the vocabulary.</li><li>The order of the home and the five-step introduction follow the prototype Janet Gonzales drew for this site on 3 November 2026.</li><li>The rules on the behind-the-scenes pages: the card's fields, the two labels, the review, the build, the tiers.</li><li>The licenses: Apache 2.0 for the code, CC BY 4.0 for the content, the sources' own licenses untouched and followed, and no lock-in by construction (<button class="link" data-go="license">the License page</button>; ADR 0004, 21 October 2026).</li></ul></div>
   <div class="panel"><h3>Illustrative</h3><ul style="margin:0;padding-left:18px;font-size:.95rem"><li>The domain, kskb.dev, registered on 21 October 2026 at Cloudflare Registrar, serves this site, the <a href="/dev/">developer view</a> (the cards as records, the databases, and how the base is built) and the databases at <a href="/data/">kskb.dev/data/</a>, all as plain files.</li><li>The build time, the sign-in and the ten visitors: a switch in this preview, a sign-in on the real site.</li><li>The look, which is Janet Gonzales's design (November 2026) and not the KERI Foundation's.</li></ul></div></div>
   <h2 style="margin-top:28px">What comes next</h2>
