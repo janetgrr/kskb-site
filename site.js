@@ -297,7 +297,7 @@ function evRow(x){
 function luRow(x, up, i){
   const [y, m, d] = (x.d || '').split('-').map(Number);
   const wd = y && m && d ? WDAY[new Date(y, m - 1, d).getDay()] : '';
-  return `<div class="ev-card clk ${up ? 'up ev-up' : 'ev-past'}" data-go="item:${esc(x.id)}"><div class="ev-cover"><div class="ev-cal"><span>${m ? MON[m - 1] : ''}</span><b>${d || ''}</b></div><span class="ev-state">${up ? '<span class="lu-live"></span>Upcoming' : 'Past'}</span></div><div class="ev-body"><span class="ev-when">${wd}${y ? ', ' + y : ''}</span><h3>${esc(x.n)}</h3><p class="ev-host">By ${esc(x.au || x.m || 'the community')}</p></div></div>`;
+  return `<div class="ev-card clk ${up ? 'up ev-up' : 'ev-past'}" data-go="item:${esc(x.id)}"><div class="ev-cover"><div class="ev-cal"><span>${m ? MON[m - 1] : ''}</span><b>${d || ''}</b></div><span class="ev-state">${up ? '<span class="lu-live"></span>Upcoming' : 'Past'}</span></div><div class="ev-body"><span class="ev-when">${[wd, m && d ? MON[m - 1] + ' ' + d : '', y].filter(Boolean).join(', ').replace(/, (\d{4})$/, ', $1')}</span><h3>${esc(x.n)}</h3><p class="ev-host">By ${esc(x.au || x.m || 'the community')}</p></div></div>`;
 }
 const KX_ST ='stroke="currentColor" fill="none" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"';
 const SCR = '<rect x="54" y="12" width="152" height="156" rx="20" fill="var(--surface)" stroke="currentColor" stroke-opacity="0.1"/><circle cx="72" cy="32" r="7" fill="currentColor" fill-opacity="0.16"/><rect x="86" y="28" width="56" height="8" rx="4" fill="currentColor" fill-opacity="0.2"/><rect x="54" y="48" width="152" height="1.5" fill="currentColor" fill-opacity="0.08"/>';
@@ -319,10 +319,10 @@ const I = n => svgIc(ICONS[n]);
     ph(`<div class="ph-hd">${ln(54, 'hd')}${ln(42, 'sm')}</div><div class="ph-pair"><div class="ph-kc ph-dim"><span class="ph-big">${I("key")}</span><span class="ph-badge red">!</span>${ln(70)}</div><span class="ph-arrow">→</span><div class="ph-kc ph-sealed"><span class="ph-big">${I("lock")}</span><span class="ph-badge">✓</span>${ln(70, 'grn')}</div></div><div class="ph-btn pri">${ln(46, 'wht')}</div>`),
     ph(`<div class="ph-hd">${ln(52, 'hd')}${ln(44, 'sm')}</div><div class="ph-wit"><span class="ph-log">${I("log")}</span><span class="ph-w w1">${I("globe")}${ok}</span><span class="ph-w w2">${I("globe")}${ok}</span><span class="ph-w w3">${I("globe")}${ok}</span></div><div class="ph-good">${I("shield")} ${ln(48, 'grn')}</div>`)); }
 const KX = [
-  {h:"Today, someone else vouches for you", b:"Online, your identity usually lives with someone else — an email provider, a social network, a certificate company. If they fail, get hacked or lock you out, people can no longer be sure it is really you."},
-  {h:"KERI starts with keys only you hold", b:"You create a pair of keys on your own device, and your identifier is made straight from them. Nobody issues it and nobody can take it away — anyone can check it without a company in the middle."},
+  {h:"Today, someone else vouches for you", b:"Online, your identity usually lives with someone else: an email provider, a social network, a certificate company. If they fail, get hacked or lock you out, people can no longer be sure it is really you."},
+  {h:"KERI starts with keys only you hold", b:"You create a pair of keys on your own device, and your identifier is made straight from them. Nobody issues it and nobody can take it away. Anyone can check it without a company in the middle."},
   {h:"Every change goes in a signed log", b:"Whenever your keys change, you sign an entry and add it to your key event log. Anyone can replay the log from the start and see exactly which keys are in charge today."},
-  {h:"You plan your next key in advance", b:"When you make your keys, you also seal in a fingerprint of the next ones — pre-rotation. If your current key is ever stolen, you switch to the next one, and the thief cannot follow because they never saw it."},
+  {h:"You plan your next key in advance", b:"When you make your keys, you also seal in a fingerprint of the next ones. This is called pre-rotation. If your current key is ever stolen, you switch to the next one, and the thief cannot follow because they never saw it."},
   {h:"Witnesses keep everyone honest", b:"Your log is shared with witnesses you choose, and each signs a receipt for every entry. Watchers compare copies, so two different versions of your history get caught. GLEIF's vLEI for companies is built on this."}];
 let kxI = 0;
 function openKx(i){ const ov = $('#kxov'); if(!ov) return; kxI = i || 0; kxRender(); ov.classList.add('on'); ov.setAttribute('aria-hidden', 'false'); try{ document.body.style.overflow = 'hidden'; }catch(e){} }
@@ -611,3 +611,13 @@ document.addEventListener('DOMContentLoaded', () => {
   new MutationObserver(ms => ms.forEach(m => m.addedNodes.forEach(n => { if(n.nodeType === 1) scan(n); }))).observe(document.documentElement, {childList: true, subtree: true});
   document.addEventListener('DOMContentLoaded', () => scan(document)); scan(document);
 })();
+
+// Logo always returns to a clean home page: clears any open search and scrolls to the top
+document.addEventListener('click', e => {
+  const b = e.target.closest('.site-nav .brand'); if(!b) return;
+  e.preventDefault();
+  const q = document.getElementById('hsq'); if(q) q.value = '';
+  if(location.hash !== '#home') history.pushState(null, '', '#home');
+  go('home');
+  window.scrollTo({top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'});
+});
