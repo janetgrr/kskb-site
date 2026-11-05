@@ -13,7 +13,14 @@ const canRead = n => n.c === 'public' || who.tier === 'T1' || who.tier === 'T3';
 const topicOf = Object.fromEntries(D.vocab.topics.map(t => [t.id, t]));
 const LV = {intro: 0, practitioner: 1, implementer: 2, normative: 3};
 const START_FILTER = {'keri-one': x => x.via === 'keri-one-resources' || x.via === 'keri-one', kerisse: x => x.via === 'kerisse' || /kerisse/i.test(x.n + ' ' + x.m), kericonf: x => ['kericonf-2026-conf-page', 'kericonf-2026-videos'].includes(x.via), iiw: x => /iiw/i.test((x.via || '') + ' ' + x.id), tutorials: x => ['tutorial', 'course', 'site'].includes(x.t), code: x => x.t === 'repository', toip: x => x.t === 'specification' || /trust over ip/i.test(x.m), vlei: x => x.m.includes('GLEIF'), products: x => x.t === 'organization'};
-const firstFour = (pool, n) => pool.filter(x => x.a).sort((a, b) => ((a.l in LV ? LV[a.l] : 9) - (b.l in LV ? LV[b.l] : 9)) || (b.d || '').localeCompare(a.d || '')).slice(0, n || 4);
+// Start here (5 November 2026, from Trent Larson's review): a role's pinned cards, the card ids in its start list, come first in their order; the rule, introductory before deeper and newest first, fills the rest.
+const firstFour = (pool, n, pins) => { const p = (pins || []).map(id => byId[id]).filter(Boolean); return p.concat(pool.filter(x => x.a && !p.includes(x)).sort((a, b) => ((a.l in LV ? LV[a.l] : 9) - (b.l in LV ? LV[b.l] : 9)) || (b.d || '').localeCompare(a.d || ''))).slice(0, n || 4); };
+const startOf = r => { let s = []; try { s = JSON.parse(r.start || '[]'); } catch(e) {} return {cards: s.filter(x => byId[x]), notes: s.filter(x => byPath[x] && byPath[x].h)}; };  // a generated index has no body and is not a read
+// Search (5 November 2026, from the same review): a query is matched word by word, in any order, with apostrophes and punctuation ignored, over the name, the id, the abstract, the authors, the maintainer and the topics; every word has to appear or, when no card has them all, most of them.
+const norm = s => String(s == null ? '' : s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/['\u2019`"]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+const matchScore = (hay, q) => { const ts = norm(q).split(' ').filter(Boolean); if(!ts.length) return 1; const h = ' ' + norm(hay) + ' '; let n = 0; ts.forEach(x => { if(h.includes(x)) n++; }); return n / ts.length; };
+const cardText = c => [c.n, c.id, c.a, c.au, c.m, c.pr, (c.tp || []).map(x => TOPIC[x] || x).join(' ')].join(' ');
+const hitsOf = (rows, text, q) => { if(!norm(q)) return rows; const sc = rows.map(c => [c, matchScore(text(c), q)]); let out = sc.filter(x => x[1] >= 1); if(!out.length) out = sc.filter(x => x[1] >= 0.6); return out.map(x => x[0]); };
 const stepCards = (rows, label) => rows.length < 2 ? '' : `<div class="carousel">${rows.map((x, i) => tcard(x, PAL[i % PAL.length], label ? label + ' ' + (i + 1) : (TYPE[x.t] || x.t), LEVEL[x.l] || '')).join('')}</div>`;
 const START = [['keri-one', 'keri.one'], ['kerisse', 'KERISSE'], ['kericonf', 'KERIConf'], ['iiw', 'IIW'], ['tutorials', 'Tutorials'], ['code', 'Code'], ['toip', 'ToIP'], ['vlei', 'vLEI'], ['products', 'Products']];
 const KIND = Object.fromEntries(D.vocab.kinds.map(k => [k.id, k.label])), SECTOR = Object.fromEntries(D.vocab.sectors.map(s => [s.id, s.label]));
@@ -29,14 +36,14 @@ function faceted(el, rows, defs, render, opts){
   el.innerHTML = `<div class="fx"><div class="fbar"><input class="search fq" type="search" placeholder="${esc(opts.placeholder || 'Filter by words')}" aria-label="Filter"><div class="fchips">${top.map(d => `<div class="fchip-w"><button class="fchip" type="button" data-fc="${esc(d.key)}" aria-expanded="false"><span class="fchip-l">${esc(d.label)}</span> <svg class="dd-car" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></button><div class="fpop" hidden></div></div>`).join('')}${defs.length > top.length || true ? `<button class="ftog" type="button">${FI}<span class="ftog-l">All filters</span></button>` : ''}<button class="link fclear" type="button" hidden>Clear</button></div><span class="note fcount"></span></div><div class="fout"></div></div>
   <div class="fdrawer" role="dialog" aria-label="Filters" aria-hidden="true"><div class="fd-h"><b>Filters</b><button class="fd-x" type="button" aria-label="Close">×</button></div><div class="fd-body"></div><div class="fd-f"><button class="link fd-reset" type="button">Reset all</button><button class="fd-show" type="button">Show results</button></div></div><div class="fd-scrim"></div>`;
   const out = el.querySelector('.fout'), fq = el.querySelector('.fq'), fcount = el.querySelector('.fcount'), dbody = el.querySelector('.fd-body'), drawer = el.querySelector('.fdrawer');
-  const text = c => opts.text ? opts.text(c) : (c.n + ' ' + (c.a || '') + ' ' + (c.au || '') + ' ' + (c.m || '') + ' ' + (c.pr || '')).toLowerCase();
-  const counts = d => { const q = fq.value.trim().toLowerCase(), cnt = {}; rows.filter(c => pass(c, d.key) && (!q || text(c).includes(q))).forEach(c => vals(c, d).forEach(v => { if(v) cnt[v] = (cnt[v] || 0) + 1; }));
+  const text = c => opts.text ? opts.text(c) : cardText(c);
+  const counts = d => { const q = fq.value.trim().toLowerCase(), cnt = {}; hitsOf(rows.filter(c => pass(c, d.key)), text, q).forEach(c => vals(c, d).forEach(v => { if(v) cnt[v] = (cnt[v] || 0) + 1; }));
     const ks = Object.keys(cnt).sort((a, b) => d.order ? d.order.indexOf(a) - d.order.indexOf(b) : d.key === 'year' ? b.localeCompare(a) : cnt[b] - cnt[a] || a.localeCompare(b)); return [ks, cnt]; };
   const opts_ = (d, ks, cnt) => ks.slice(0, 60).map(v => `<label class="fopt"><input type="checkbox" data-fk="${esc(d.key)}" value="${esc(v)}"${sel[d.key].has(v) ? ' checked' : ''}><span>${esc(v.length > 44 ? v.slice(0, 42) + '…' : v)}</span><span class="c">${fmt(cnt[v])}</span></label>`).join('') + (ks.length > 60 ? `<p class="note">and ${ks.length - 60} more — narrow with the search</p>` : '');
   const pop = d => { const [ks, cnt] = counts(d); return `${ks.length > 8 ? `<input class="search fpop-q" type="search" placeholder="Search ${esc(d.label.toLowerCase())}">` : ''}<div class="fpop-list">${opts_(d, ks, cnt)}</div>`; };
   const draw = () => {
     const q = fq.value.trim().toLowerCase();
-    const hits = rows.filter(c => pass(c) && (!q || text(c).includes(q)));
+    const hits = hitsOf(rows.filter(c => pass(c)), text, q);
     fcount.textContent = fmt(hits.length) + ' of ' + fmt(rows.length);
     out.innerHTML = hits.length ? render(hits) : emptyState('Nothing here yet.', 'Even KERI started with a single event. Try fewer words or clear a filter.');
     const act = Object.values(sel).reduce((t, x) => t + x.size, 0);
@@ -101,13 +108,14 @@ function openWho(){
   $$('#whobody .persona').forEach(el => el.addEventListener('click', () => setWho(el.dataset.who)));
   $('#whodrawer').classList.add('on');
 }
-// Browser history (Mark, 21 October 2026): every in-page navigation is a history entry, so the browser's back and forward buttons move within the site instead of leaving it.
+// Browser history (Mark, 21 October 2026): every in-page navigation is a history entry, so the browser's back and forward buttons move within the site instead of leaving it. Since 5 November 2026 (Trent Larson's review) each entry also sets the address, #<page>, #item/<id>, #topic/<id>, #role/<id>, #note/<path> or #lens/<id>, so that any view can be copied from the address bar and sent.
 let HIST = false;
+const hashOf = (id, arg) => '#' + (arg == null ? id : id + '/' + encodeURIComponent(arg).replace(/%2F/g, '/'));
 function remember(id, arg){
   if(HIST) return;
   const st = {id, arg: arg === undefined ? null : arg}; const cur = history.state;
   if(cur && cur.id === st.id && cur.arg === st.arg) return;
-  try{ history.pushState(st, ''); }catch(e){}
+  try{ history.pushState(st, '', hashOf(st.id, st.arg)); }catch(e){}
 }
 window.addEventListener('popstate', e => { HIST = true; try{ const s = e.state || {id: 'home', arg: null}; go(s.id, s.arg == null ? undefined : s.arg); } finally { HIST = false; } });
 function coverize(el){
@@ -126,6 +134,7 @@ function coverize(el){
 }
 function go(id, arg){
   if(id.includes(':') && arg === undefined){ [id, arg] = [id.split(':')[0], id.split(':').slice(1).join(':')]; }
+  if(id === 'lens'){ who = Object.assign({}, who, {role: arg && arg !== 'none' ? arg : null}); remember(who.role ? 'lens' : 'home', who.role || undefined); $$('.page').forEach(p => p.classList.toggle('on', p.id === 'p-home')); $$('.links button').forEach(b => b.classList.toggle('active', b.dataset.go === 'home')); renderHome(); wire(); return; }
   const DETAIL = {item: renderItem, topic: renderTopic, role: renderRole, note: renderNote};
   remember(DETAIL[id] ? id : (PAGES.includes(id) ? id : 'home'), DETAIL[id] ? arg : undefined);
   if(DETAIL[id]){ $$('.page').forEach(p => p.classList.toggle('on', p.id === 'p-detail')); $$('.links button').forEach(b => b.classList.remove('active')); DETAIL[id](arg); coverize($('#p-detail')); wire(); window.scrollTo({top: 0, behavior: 'instant'}); return; }
@@ -203,21 +212,23 @@ function renderTopics(){
 function renderRole(id){
   const r = roleOf(id); const el = $('#p-detail'); if(!r){ el.innerHTML = crumbs('Roles') + '<h1>No such role</h1>'; return; }
   const rows = D.cards.filter(c => c.ro.includes(r.id)); const byT = {}; rows.forEach(c => (byT[c.t] = byT[c.t] || []).push(c));
-  let start = []; try { start = JSON.parse(r.start || '[]'); } catch(e) {}
-  const four = firstFour(rows);
+  const st = startOf(r); const four = firstFour(rows, 4, st.cards);
   el.innerHTML = crumbs('<button class="link" data-go="roles">Start as…</button>', esc(r.label)) + `<div class="role-hero"><span class="card-chip cc-green">Role</span><h1>${esc(r.label)}</h1><p class="lede">${esc(r.does)}</p><div class="role-stats"><span><b>${fmt(rows.length)}</b> cards for you</span><span><b>${Object.keys(byT).length}</b> kinds of material</span></div></div>
+  ${st.notes.length ? `<section class="role-sec role-read"><h2>Read first</h2><p class="note">The notes written for this role, in the order to read them; a reading path links every stop to its card and to the original.</p><div class="startbox"><ol class="startlist">${st.notes.map(p => `<li><a href="#note/${esc(p)}">${esc(byPath[p].t)}</a></li>`).join('')}</ol></div></section>` : ''}
   ${four.length ? `<section class="role-sec"><h2>Start here</h2><p class="note">The quickest way in, in plain terms.</p><div class="startbox"><ol class="startlist">${four.map(c => `<li><a href="#item/${esc(c.id)}">${esc(c.n)}</a> <span class="startlist-d">${esc(c.a || plainSum(c))}</span></li>`).join('')}</ol></div></section>` : ''}
   <div class="grid2"><div class="panel"><h3>Questions this answers</h3><ul class="qlist">${r.questions.map(q => `<li>${esc(q)}</li>`).join('') || '<li class="note">None written yet.</li>'}</ul></div>
-  <div class="panel"><h3>Good first reads</h3>${start.length ? `<ul class="qlist rd">${start.map(p => byPath[p] ? `<li><a href="#note/${esc(p)}">${esc(byPath[p].t)}</a></li>` : `<li>${esc(p)}</li>`).join('')}</ul>` : '<p class="note">No starting note yet — the lists below are the way in.</p>'}${who.role === r.id ? '' : `<p style="margin:18px 0 0"><button class="kx-btn kx-next" type="button" id="takeRole">View the site as ${esc(r.label.toLowerCase())} →</button></p>`}</div></div>
+  <div class="panel"><h3>Read as this role</h3><p>${who.role === r.id ? `You are reading as ${esc(r.label.toLowerCase())}: the home page opens on this lens, and the address of that view is #lens/${esc(r.id)}.` : `The home page arranged for ${esc(r.label.toLowerCase())}: the start list, the latest cards and the events in this lens.`}</p>${who.role === r.id ? '' : `<p style="margin:18px 0 0"><button class="kx-btn kx-next" type="button" id="takeRole">View the site as ${esc(r.label.toLowerCase())} →</button></p>`}</div></div>
   ${Object.entries(byT).sort((a, b) => b[1].length - a[1].length).map(([k, v]) => `<h2>${esc(shortType(k))} <span class="h-ct">${fmt(v.length)}</span></h2>${cardRows(v.slice(0, 40))}${v.length > 40 ? '<p class="note">Showing the first 40 by date.</p>' : ''}`).join('')}${strip('role', 'the resource_roles join table')}`;
   const tr = $('#takeRole'); if(tr) tr.addEventListener('click', () => { if(PERSONAS.find(p => p.id === r.id)) setWho(r.id); else { who = {...PERSONAS[2], id: r.id, role: r.id, label: r.label}; renderNav(); go('home'); } });
 }
+// Register ids in a note's text, "[hitchhikers-guide]", become links to the card and to the original (5 November 2026, from the review).
+const linkRefs = h => String(h || '').replace(/\[([a-z0-9][a-z0-9.-]*)\]/g, (m, id) => byId[id] ? `<span class="cref"><a href="#item/${esc(id)}">card</a>${byId[id].u ? ` · <a href="${esc(byId[id].u)}" target="_blank" rel="noopener">original ↗</a>` : ''}</span>` : m);
 function renderNote(path){
   const n = byPath[path]; const el = $('#p-detail'); if(!n){ el.innerHTML = crumbs('Notes') + `<h1>No such note</h1><p class="note">Nothing in this copy at <code>${esc(path)}</code>.</p>`; return; }
   const head = crumbs('<button class="link" data-go="notes">Notes</button>', esc(n.p.split('/')[0])) + `<h1>${esc(n.t)}</h1><p class="note"><span class="chip">${esc(n.c)}</span> ${esc(n.k || 'note')} · ${fmt(n.w)} words${n.s ? ' · ' + esc(n.s) : ''}</p>`;
   if(!canRead(n)){ el.innerHTML = head + `<div class="panel"><h3>Shared with the reviewers</h3><p>This note is marked <b>partner</b>: it travels to the core group's copy and is not on the public site. Sign in as a reviewer to read it here, or wait for the publication decision, which may mark it public.</p><p><button class="link" id="asRev">View as a reviewer</button> · <button class="link" data-go="access">What each tier sees</button></p></div>${strip('note')}`; const b = $('#asRev'); if(b) b.addEventListener('click', () => { setWho('reviewer'); go('note', path); }); return; }
   if(!n.h){ el.innerHTML = head + `<p class="note">A generated index; its content is this site's own views: <button class="link" data-go="topics">Topics</button>, <button class="link" data-go="cards">Every card</button>, <button class="link" data-go="timeline">Timeline</button>.</p>${strip('note')}`; return; }
-  el.innerHTML = head + `<div class="prose note-body">${n.h}</div>${strip('note', 'the notes table; the body rendered from Markdown at build time, wikilinks resolved to the notes in this copy')}`;
+  el.innerHTML = head + `<div class="prose note-body">${linkRefs(n.h)}</div>${strip('note', 'the notes table; the body rendered from Markdown at build time, wikilinks resolved to the notes in this copy')}`;
 }
 function renderMeetings(){
   const ms = D.cards.filter(c => c.t === 'meeting'); const byS = {}; ms.forEach(c => (byS[c.via || 'other'] = byS[c.via || 'other'] || []).push(c));
@@ -363,9 +374,8 @@ function homeSearch(q, keep){
   const res = $('#homeresults'), secs = $('#homesections'); if(!res || !secs) return;
   q = (q || '').trim(); if(!keep){ hsType = 'all'; hsLevel = 'all'; }
   if(!q){ res.hidden = true; res.innerHTML = ''; secs.hidden = false; return; }
-  const ql = q.toLowerCase();
-  const score = c => (c.n.toLowerCase().includes(ql) ? 2 : 0) + ((c.a || '').toLowerCase().includes(ql) ? 1 : 0);
-  const all = D.cards.filter(c => (c.n + ' ' + (c.a || '') + ' ' + (c.au || '') + ' ' + (c.m || '')).toLowerCase().includes(ql));
+  const score = c => matchScore(c.n + ' ' + c.id, q) * 2 + matchScore(c.a || '', q);
+  const all = hitsOf(D.cards, cardText, q);
   const cnt = {}; all.forEach(c => { cnt[c.t] = (cnt[c.t] || 0) + 1; });
   let hits = (hsType === 'all' ? all : all.filter(c => c.t === hsType)).filter(c => hsLevel === 'all' || c.l === hsLevel);
   hits = hits.slice().sort(hsSort === 'newest' ? (a, b) => (b.d || '').localeCompare(a.d || '') : hsSort === 'oldest' ? (a, b) => (a.d || '9').localeCompare(b.d || '9') : (a, b) => score(b) - score(a));
@@ -388,11 +398,13 @@ function closeColl(){ const ov = $('#collov'); if(ov){ ov.classList.remove('on')
 let heroIntroPlayed = false, rolesHidden = false;
 function renderHome(){
   const c = D.counts; const r = who.role ? roleOf(who.role) : null;
-  const startFour = r ? firstFour(D.cards.filter(c => c.ro.includes(r.id))) : [];
+  const stN = r ? startOf(r).notes : [];
+  const startFour = r ? firstFour(D.cards.filter(c => c.ro.includes(r.id)), 4, startOf(r).cards) : [];
+  const readFirst = stN.length ? `<p class="note" style="margin-top:10px">Read first: ${stN.map(p => `<a href="#note/${esc(p)}">${esc(byPath[p].t)}</a>`).join(' · ')}</p>` : '';
   const newest = D.cards.filter(x => x.d && !['event', 'meeting', 'meeting-series'].includes(x.t) && (!r || x.ro.includes(r.id)) && !startFour.includes(x)).slice(0, 6);
   const forRoles = ['standards-policy', 'communications', 'business-development'];
   const startHd = r ? (forRoles.includes(r.id) ? `Start here for <span class="serif-it">${esc(r.label.toLowerCase())}</span>` : `Start here, as ${'aeiou'.includes((r.label[0] || '').toLowerCase()) ? 'an' : 'a'} <span class="serif-it">${esc(r.label.toLowerCase())}</span>`) : '';
-  const startBlock = r ? `<section class="home-sec" id="starthere"><h2>${startHd}</h2><p class="lede" style="margin-bottom:10px">${esc(r.does)}</p><div class="startbox"><ol class="startlist">${startFour.map(c => `<li><a href="#item/${esc(c.id)}">${esc(c.n)}</a> <span class="startlist-d">${esc(c.a || '')}</span></li>`).join('')}</ol></div><p class="start-more"><a class="link" href="#role/${esc(r.id)}" data-go="role:${esc(r.id)}">Open the full ${esc(r.label || r.n || r.id)} page →</a></p></section>` : '';
+  const startBlock = r ? `<section class="home-sec" id="starthere"><h2>${startHd}</h2><p class="lede" style="margin-bottom:10px">${esc(r.does)}</p><div class="startbox"><ol class="startlist">${startFour.map(c => `<li><a href="#item/${esc(c.id)}">${esc(c.n)}</a> <span class="startlist-d">${esc(c.a || '')}</span></li>`).join('')}</ol></div>${readFirst}<p class="start-more"><a class="link" href="#role/${esc(r.id)}" data-go="role:${esc(r.id)}">Open the full ${esc(r.label || r.n || r.id)} page →</a></p></section>` : '';
   const n = f => fmt(D.cards.filter(f).length);
   const COLL = collItems();
   const SEARCH_KEYS = ['topics', 'timeline', 'meetings', 'products'];
@@ -430,7 +442,7 @@ function renderHome(){
   <div class="foot-col"><h5>About</h5><ul><li><button class="link" data-go="about">About this site</button></li><li><button class="link" data-go="license">Licenses &amp; no lock-in</button></li><li><button class="link" data-go="card">Behind the scenes</button></li></ul></div>
   </div>
   <div class="foot-bottom"><span>© 2026 KERISuite Knowledge Base · kskb.dev, in preview</span><span>Code Apache 2.0 · content CC BY 4.0</span><span>With thanks to KERISSE — Kor Dwarshuis &amp; Henk van Cann</span></div></footer>`;
-  $$('#p-home [data-lens]').forEach(b => b.addEventListener('click', () => { const cur = who.role; who = Object.assign({}, who, {role: cur === b.dataset.lens ? null : b.dataset.lens}); renderHome(); wire(); }));
+  $$('#p-home [data-lens]').forEach(b => b.addEventListener('click', () => { const cur = who.role; go('lens', cur === b.dataset.lens ? 'none' : b.dataset.lens); }));
   $$('#p-home [data-roletoggle]').forEach(b => b.addEventListener('click', () => { rolesHidden = !rolesHidden; const g = $('#p-home .hero-grid'); if(g){ g.classList.remove('intro'); g.classList.toggle('roles-off', rolesHidden); } const t = $('#p-home .rolelist-toggle'); if(t) t.textContent = rolesHidden ? 'Show' : 'Hide'; }));
   { const hsq = $('#hsq'); if(hsq){ let tm; hsq.addEventListener('input', () => { clearTimeout(tm); const v = hsq.value; const res = $('#homeresults');
       if(v.trim() && res){ res.hidden = false; const hs = $('#homesections'); if(hs) hs.hidden = true; if(!res.querySelector('.skel')) res.innerHTML = `<div class="skel"><div class="sk sk-h"></div>${'<div class="sk-row"><div class="sk sk-ic"></div><div class="sk-tx"><div class="sk sk-l"></div><div class="sk sk-s"></div></div><div class="sk sk-c"></div></div>'.repeat(5)}</div>`; }
@@ -598,7 +610,7 @@ document.addEventListener('DOMContentLoaded', () => {
   { const kb = $('#kxback'); if(kb) kb.addEventListener('click', closeKx); }
   document.addEventListener('keydown', e => { if(e.key === 'Escape'){ closeCard(); closeColl(); closeKx(); $('#whodrawer').classList.remove('on'); } });
   // Deep links (4 November 2026): #item/<id>, #topic/<id>, #role/<id> and #note/<path>, the forms the page's own anchors use, open on load and on a hash change, so that a card page at /cards/<id>/ can send a browser to its card. Nothing else about the routes changes.
-  const routeOf = h => { const m = /^(item|topic|role|note)\/(.+)$/.exec(h); return m ? [m[1], decodeURIComponent(m[2])] : null; };
+  const routeOf = h => { const m = /^(item|topic|role|note|lens)\/(.+)$/.exec(h); return m ? [m[1], decodeURIComponent(m[2])] : null; };
   const h = (location.hash || '').replace('#', ''); const r0 = routeOf(h); try{ history.replaceState(r0 ? {id: r0[0], arg: r0[1]} : {id: PAGES.includes(h) ? h : 'home', arg: null}, ''); }catch(e){} HIST = true; if(r0) go(r0[0], r0[1]); else go(PAGES.includes(h) ? h : 'home'); HIST = false;
   window.addEventListener('hashchange', () => { const k = (location.hash || '').replace('#', ''); const r = routeOf(k); if(r) go(r[0], r[1]); else if(PAGES.includes(k)) go(k); });
 });
@@ -632,7 +644,6 @@ document.addEventListener('click', e => {
   const b = e.target.closest('.site-nav .brand'); if(!b) return;
   e.preventDefault();
   const q = document.getElementById('hsq'); if(q) q.value = '';
-  if(location.hash !== '#home') history.pushState(null, '', '#home');
   go('home');
   window.scrollTo({top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'});
 });

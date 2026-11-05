@@ -1010,3 +1010,6 @@ body{background-image:radial-gradient(circle at 1px 1px,var(--dot) 1px,transpare
 .scard-tx{padding-right:0;gap:10px}
 .scard-tx b{font-size:1.5rem;line-height:1.15;letter-spacing:-.025em}
 .scard-tx span{font-size:1.02rem;line-height:1.45}
+/* Register ids in a note's text, rendered as card and original links (5 November 2026) */
+.note-body .cref{font-size:.86em;white-space:nowrap;margin-left:2px;opacity:.85}
+.note-body .cref a{text-decoration:underline dotted}
