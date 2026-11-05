@@ -1170,3 +1170,5 @@ html.sx-lock{overflow:hidden}
 .lens-swap .carousel>*{animation-duration:.7s;animation-delay:calc(var(--s,0) * 140ms + 220ms + var(--i,0) * 70ms)}
 .lens-swap .startlist>li{animation-duration:.7s}
 .lens-swap .startlist>li:nth-child(2){animation-delay:90ms}.lens-swap .startlist>li:nth-child(3){animation-delay:180ms}.lens-swap .startlist>li:nth-child(4){animation-delay:270ms}
+/* Roomier top bar (4 November 2026) */
+.site-nav .in{padding-top:14px;padding-bottom:14px;min-height:68px}
