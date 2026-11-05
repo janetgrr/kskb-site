@@ -439,7 +439,7 @@ function renderHome(){
       <h1>The KERI Suite,<br><span class="serif-it">open to everyone.</span></h1>
       <p class="hero-lede">Every paper, talk, specification, repository, meeting and organization about KERI, each with a note on who it is for and how much to trust it. Tell us who you are and the page adjusts.</p>
       <form class="hero-search" id="homesearch"><input class="search" id="hsq" type="search" placeholder="search titles, authors, abstracts" aria-label="Search the index"><button class="search-go" type="submit">Search</button></form>
-      <p class="hero-sub"><button class="link" data-kx type="button">▶ What is KERI? A five-step explainer →</button></p>
+      <p class="hero-sub"><button class="link" data-kx type="button">▶ What is KERI? A five-step explainer</button></p>
     </div>
     <div class="hero-side">
       <div class="hero-side-h-row"><h2 class="hero-side-h">→ I'm reading as a…</h2><button class="rolelist-toggle" data-roletoggle type="button">${rolesHidden ? 'Show' : 'Hide'}</button></div>
