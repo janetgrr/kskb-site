@@ -54,7 +54,7 @@ function faceted(el, rows, defs, render, opts){
     el.querySelector('.fd-show').textContent = hits.length ? `Show ${fmt(hits.length)} result${hits.length === 1 ? '' : 's'}` : 'No matches';
     if(drawer.classList.contains('open')) drawDrawer();
     el.querySelectorAll('.fpop:not([hidden])').forEach(pp => { const d = defs.find(x => x.key === pp.previousElementSibling.dataset.fc); const sc = pp.querySelector('.fpop-list')?.scrollTop || 0; const qv = pp.querySelector('.fpop-q')?.value || ''; pp.innerHTML = pop(d); const qi = pp.querySelector('.fpop-q'); if(qi){ qi.value = qv; filterPop(pp); } const l = pp.querySelector('.fpop-list'); if(l) l.scrollTop = sc; });
-    wire(); $$('.fout tr.clk', el).forEach(tr => tr.addEventListener('click', () => openCard(tr.dataset.id)));
+    wire(); $$('.fout tr.clk', el).forEach(tr => { if(tr.dataset.id) tr.addEventListener('click', () => openCard(tr.dataset.id)); });
   };
   const drawDrawer = () => { dbody.innerHTML = defs.map(d => { const [ks, cnt] = counts(d); if(!ks.length) return ''; return `<details class="facet"${sel[d.key].size || defs.indexOf(d) < 2 ? ' open' : ''}><summary><span>${esc(d.label)}</span>${sel[d.key].size ? `<span class="fd-n">${sel[d.key].size}</span>` : ''}</summary>${opts_(d, ks, cnt)}</details>`; }).join(''); };
   const filterPop = pp => { const t = (pp.querySelector('.fpop-q')?.value || '').toLowerCase(); pp.querySelectorAll('.fopt').forEach(l => { l.hidden = t && !l.textContent.toLowerCase().includes(t); }); };
@@ -488,7 +488,7 @@ function renderUpdates(){
   <div class="grid2"><div class="panel"><h3>Next events</h3><ul style="margin:0;padding-left:18px">${D.cards.filter(c => c.t === 'event' && c.d >= '2026-10-21').sort((a, b) => a.d < b.d ? -1 : 1).slice(0, 6).map(c => `<li><a href="#item/${esc(c.id)}">${esc(c.n)}</a> <span class="note">${esc(c.d)}</span></li>`).join('') || '<li class="note">none carded</li>'}</ul></div>
   <div class="panel"><h3>Your subscription</h3><dl class="kv"><dt>address</dt><dd>the one you confirmed <span class="chip ill">illustrative</span></dd><dt>lens</dt><dd>${r ? esc(r.label) : 'none; choose one from Sign in as…'}</dd><dt>cadence</dt><dd>monthly, and a note before each release</dd><dt>unsubscribe</dt><dd>one link in every email; the address is then deleted</dd></dl></div></div>
   <h2>Newest in your lens</h2><div class="table-wrap"><table><thead><tr><th>Item</th><th>Type</th><th>Date</th><th>Level</th><th>Evidence</th></tr></thead><tbody>${newest.map(c => `<tr class="clk" data-id="${esc(c.id)}"><td>${esc(c.n)}</td><td>${esc(TYPE[c.t] || c.t)}</td><td>${esc(c.d)}</td><td>${esc(LEVEL[c.l] || '')}</td><td>${esc(tc(c.e))}</td></tr>`).join('')}</tbody></table></div>${strip('updates')}`;
-  $$('#p-updates tr.clk').forEach(tr => tr.addEventListener('click', () => openCard(tr.dataset.id)));
+  $$('#p-updates tr.clk').forEach(tr => { if(tr.dataset.id) tr.addEventListener('click', () => openCard(tr.dataset.id)); });
 }
 function renderNotes(){
   const rev = who.tier === 'T1' || who.tier === 'T3'; const list = D.notes.filter(n => n.h || !rev ? true : true);
@@ -554,7 +554,7 @@ function renderCards(){
     const rows = D.cards.filter(c => (!t || c.t === t) && (!p || c.tp.includes(p)) && (!l || c.l === l) && (!e || c.e === e) && (!ro || c.ro.includes(ro)) && (!q || matchScore(cardText(c), q) >= 1));
     $('#cn').textContent = fmt(rows.length) + ' of ' + fmt(D.cards.length);
     $('#cout').innerHTML = `<table><thead><tr><th>Item</th><th>Type</th><th>Date</th><th>Level</th><th>Evidence</th><th>In one sentence</th></tr></thead><tbody>${rows.slice(0, 300).map(c => `<tr class="clk" data-id="${esc(c.id)}"><td>${esc(c.n)}</td><td>${esc(TYPE[c.t] || c.t)}</td><td>${esc(c.d)}</td><td>${esc(LEVEL[c.l] || '')}</td><td>${esc(tc(c.e))}</td><td>${esc((c.a || '').split('. ')[0].slice(0, 140))}</td></tr>`).join('')}</tbody></table>${rows.length > 300 ? '<p class="note" style="padding:8px 10px">The first 300 are shown; narrow the list to see the rest.</p>' : ''}`;
-    $$('#cout tr.clk').forEach(tr => tr.addEventListener('click', () => openCard(tr.dataset.id))); };
+    $$('#cout tr.clk').forEach(tr => { if(tr.dataset.id) tr.addEventListener('click', () => openCard(tr.dataset.id)); }); };
   ['cq', 'ct', 'cp', 'cl', 'ce', 'cr'].forEach(i => $('#' + i).addEventListener(i === 'cq' ? 'input' : 'change', render)); render();
 }
 function renderRoles(){
