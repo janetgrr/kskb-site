@@ -18,9 +18,14 @@ const firstFour = (pool, n, pins) => { const p = (pins || []).map(id => byId[id]
 const startOf = r => { let s = []; try { s = JSON.parse(r.start || '[]'); } catch(e) {} return {cards: s.filter(x => byId[x]), notes: s.filter(x => byPath[x] && byPath[x].h)}; };  // a generated index has no body and is not a read
 // Search (5 November 2026, from the same review): a query is matched word by word, in any order, with apostrophes and punctuation ignored, over the name, the id, the abstract, the authors, the maintainer and the topics; every word has to appear or, when no card has them all, most of them.
 const norm = s => String(s == null ? '' : s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/['\u2019`"]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
-const matchScore = (hay, q) => { const ts = norm(q).split(' ').filter(Boolean); if(!ts.length) return 1; const h = ' ' + norm(hay) + ' '; let n = 0; ts.forEach(x => { if(h.includes(x)) n++; }); return n / ts.length; };
+// Search by word start (7 November 2026): a word of the query matches where a word of the text begins, so "cred" finds "credential"
+// but "ts" (from "keri-ts") no longer matches inside "events"; a word of one or two letters must match a whole word.
+const wordIn = (h, x) => x.length > 2 ? h.includes(' ' + x) : h.includes(' ' + x + ' ');
+const matchScore = (hay, q) => { const ts = norm(q).split(' ').filter(Boolean); if(!ts.length) return 1; const h = ' ' + norm(hay) + ' '; let n = 0; ts.forEach(x => { if(wordIn(h, x)) n++; }); return n / ts.length; };
+// Rank: the whole query as a phrase in the card's name or id first, then every word in the name, then the rest in their own order.
+const rankOf = (c, q) => { const nq = norm(q); if(!nq || !c || c.n == null) return 0; const h = ' ' + norm(c.n + ' ' + c.id) + ' '; return (h.includes(' ' + nq + ' ') ? 4 : h.includes(' ' + nq) ? 3 : 0) + (matchScore(c.n + ' ' + c.id, q) >= 1 ? 2 : 0); };
 const cardText = c => [c.n, c.id, c.a, c.au, c.m, c.pr, (c.tp || []).map(x => TOPIC[x] || x).join(' ')].join(' ');
-const hitsOf = (rows, text, q) => { if(!norm(q)) return rows; const sc = rows.map(c => [c, matchScore(text(c), q)]); let out = sc.filter(x => x[1] >= 1); if(!out.length) out = sc.filter(x => x[1] >= 0.6); return out.map(x => x[0]); };
+const hitsOf = (rows, text, q) => { if(!norm(q)) return rows; const sc = rows.map(c => [c, matchScore(text(c), q)]); let out = sc.filter(x => x[1] >= 1); if(!out.length) out = sc.filter(x => x[1] >= 0.6); return out.map((x, i) => [x[0], rankOf(x[0], q), i]).sort((a, b) => b[1] - a[1] || a[2] - b[2]).map(x => x[0]); };
 const stepCards = (rows, label) => rows.length < 2 ? '' : `<div class="carousel">${rows.map((x, i) => tcard(x, PAL[i % PAL.length], label ? label + ' ' + (i + 1) : (TYPE[x.t] || x.t), LEVEL[x.l] || '')).join('')}</div>`;
 const START = [['keri-one', 'keri.one'], ['kerisse', 'KERISSE'], ['kericonf', 'KERIConf'], ['iiw', 'IIW'], ['tutorials', 'Tutorials'], ['code', 'Code'], ['toip', 'ToIP'], ['vlei', 'vLEI'], ['products', 'Products']];
 const KIND = Object.fromEntries(D.vocab.kinds.map(k => [k.id, k.label])), SECTOR = Object.fromEntries(D.vocab.sectors.map(s => [s.id, s.label]));
@@ -394,7 +399,7 @@ function homeSearch(q, keep){
   const res = $('#homeresults'), secs = $('#homesections'); if(!res || !secs) return;
   q = (q || '').trim(); if(!keep){ hsType = 'all'; hsLevel = 'all'; }
   if(!q){ res.hidden = true; res.innerHTML = ''; secs.hidden = false; return; }
-  const score = c => matchScore(c.n + ' ' + c.id, q) * 2 + matchScore(c.a || '', q);
+  const score = c => rankOf(c, q) * 2 + matchScore(c.n + ' ' + c.id, q) * 2 + matchScore(c.a || '', q);
   const all = hitsOf(D.cards, cardText, q);
   const cnt = {}; all.forEach(c => { cnt[c.t] = (cnt[c.t] || 0) + 1; });
   let hits = (hsType === 'all' ? all : all.filter(c => c.t === hsType)).filter(c => hsLevel === 'all' || c.l === hsLevel);
@@ -639,7 +644,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const RKEY = 'kskb-recent'; const recent = () => { try{ return JSON.parse(localStorage.getItem(RKEY) || '[]'); }catch(e){ return []; } };
     const remember_ = v => { if(!v) return; try{ localStorage.setItem(RKEY, JSON.stringify([v, ...recent().filter(x => x !== v)].slice(0, 5))); }catch(e){} };
     const words = v => norm(v).split(' ').filter(Boolean);  // the same normalizing as the home search (5 November 2026): apostrophes and punctuation ignored
-    const score = (w, name, rest) => { const n = norm(name), r = norm(rest || ''); let s = 0; for(const x of w){ if(n.includes(x)) s += n.startsWith(x) ? 6 : 4; else if(r.includes(x)) s += 1; else return 0; } return s; };
+    const score = (w, name, rest) => { const n = norm(name), r = ' ' + norm(rest || '') + ' ', nh = ' ' + n + ' '; let s = 0; for(const x of w){ if(wordIn(nh, x)) s += n.startsWith(x) ? 6 : 4; else if(wordIn(r, x)) s += 1; else return 0; } const ph = w.join(' '); if(w.length > 1 && nh.includes(' ' + ph)) s += 8; return s; };
     const mark = (t, w) => { let h = esc(t); w.forEach(x => { if(x.length > 1) h = h.replace(new RegExp('(' + x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'ig'), '<mark>$1</mark>'); }); return h; };
     const row = (kind, go_, arg, title, sub, ic) => { items.push({go_, arg}); const i = items.length - 1; return `<button type="button" class="sx-row${i === sel ? ' on' : ''}" data-sxi="${i}"><span class="sx-ric ${ic || ''}">${kind}</span><span class="sx-rt"><b>${title}</b>${sub ? `<span>${sub}</span>` : ''}</span><span class="sx-go" aria-hidden="true">↵</span></button>`; };
     const group = (h, html, more) => html ? `<section class="sx-g"><h4>${h}${more ? `<span>${more}</span>` : ''}</h4>${html}</section>` : '';
