@@ -1386,3 +1386,22 @@ html.sx-lock{overflow:hidden}
 .rs-chip.on span{color:rgba(255,255,255,.85)}
 #rsn{margin:10px 0 0}
 .rs-bar{flex-direction:row;flex-wrap:wrap;align-items:center}.rs-bar .search{flex:1 1 280px}.rs-bar .facets{margin:0}
+/* Facet dropdowns: custom chevron 12px in from the right edge */
+.facets select{appearance:none;-webkit-appearance:none;padding:8px 36px 8px 16px;background:var(--surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5l3 3 3-3' fill='none' stroke='%236E6E73' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 12px center/12px}
+.rs-bar .facets{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;flex:1 1 420px;min-width:0}
+.rs-bar .facets select{width:100%;min-width:0;text-overflow:ellipsis}
+@media (max-width:560px){.rs-bar .facets{grid-template-columns:1fr 1fr;flex-basis:100%}.rs-bar .facets select#rsp{grid-column:1 / -1;grid-row:1}}
+.rp-tabs{scrollbar-width:none}.rp-tabs::-webkit-scrollbar{display:none}
+@media (max-width:560px){.rp-tab,.rp-tab.timed{padding:12px 12px}.rp-stop{padding:16px 14px;gap:12px}.rp-head .dt-lg{width:38px;height:38px;padding:8px}.rp-h{font-size:calc(var(--fs-body) * 1.3)}}
+@media (max-width:560px){.ctable table{width:100%;table-layout:fixed}.ctable th:last-child,.ctable td:last-child{width:auto}.ctable .ct-date{width:84px;padding-left:6px;padding-right:12px;white-space:nowrap;font-size:var(--fs-meta)}.ctable th[data-sort="2"]{width:84px;padding-left:6px}}
+@media (max-width:560px){.ctable .ct-date,.ctable th[data-sort="2"]{width:104px;padding-left:8px;padding-right:16px}}
+/* Clear, responsive space between sections */
+.role-sec,.rs-find{margin-top:clamp(40px,7vw,72px)}
+.role-hero+.role-sec{margin-top:clamp(28px,5vw,48px)}
+.home-sec{margin-top:clamp(48px,8vw,88px)}
+#homesections>.home-sec:first-child{margin-top:clamp(36px,6vw,64px)}
+.rp-tabs{margin-top:clamp(28px,5vw,44px);margin-bottom:clamp(20px,4vw,32px)}
+.rp-head{margin-bottom:clamp(16px,3vw,24px)}
+.rp-dsec+.rp-dsec{margin-top:0}
+.rp-dgrid{gap:clamp(14px,3vw,20px)}
+@media (max-width:560px){.rp-tabs{display:grid;grid-template-columns:1fr 1fr;gap:4px 8px;overflow:visible;border-bottom:0}.rp-tab,.rp-tab.timed{justify-content:flex-start;padding:12px 10px;border-bottom:1px solid var(--hair)}.rp-tab.on::after{left:0;right:0}}
