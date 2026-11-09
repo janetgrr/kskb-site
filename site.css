@@ -1385,3 +1385,4 @@ html.sx-lock{overflow:hidden}
 .rs-chip.on{background:var(--grad);border-color:transparent;color:#fff}
 .rs-chip.on span{color:rgba(255,255,255,.85)}
 #rsn{margin:10px 0 0}
+.rs-bar{flex-direction:row;flex-wrap:wrap;align-items:center}.rs-bar .search{flex:1 1 280px}.rs-bar .facets{margin:0}
