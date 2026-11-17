@@ -1485,3 +1485,16 @@ html.sx-lock{overflow:hidden}
 :root[data-theme="dark"] [class*="cc-"]{--cbg:color-mix(in srgb,var(--cfg) 22%,var(--surface));--cfg-d:color-mix(in srgb,var(--cfg) 70%,#fff)}
 :root[data-theme="dark"] :is(.card-chip,.card-ic)[class*="cc-"],:root[data-theme="dark"] [class*="cc-"] :is(.card-chip,.card-ic){color:var(--cfg-d)}
 :root[data-theme="dark"] .rp-open{border:1px solid var(--line)}
+
+/* Access heads-up */
+.lock-ic{width:12px;height:12px;flex:none}
+.acc-badge{display:inline-flex;align-items:center;gap:4px;align-self:flex-start;margin-top:2px;padding:2px 8px 2px 6px;border-radius:999px;font-size:var(--fs-label);font-weight:600;line-height:1.5;background:color-mix(in srgb,var(--warn,#C65A3A) 14%,var(--surface));color:color-mix(in srgb,var(--warn,#C65A3A) 80%,var(--ink))}
+.acc-badge.acc-restricted{background:color-mix(in srgb,#7C4FA8 14%,var(--surface));color:color-mix(in srgb,#7C4FA8 75%,var(--ink))}
+.acc-note{display:flex;gap:10px;align-items:flex-start;margin:0 0 14px;padding:12px 14px;border-radius:14px;background:color-mix(in srgb,var(--warn,#C65A3A) 10%,var(--surface));border:1px solid color-mix(in srgb,var(--warn,#C65A3A) 30%,var(--surface));color:var(--ink)}
+.acc-note.acc-restricted{background:color-mix(in srgb,#7C4FA8 10%,var(--surface));border-color:color-mix(in srgb,#7C4FA8 30%,var(--surface))}
+.acc-note .lock-ic{width:16px;height:16px;margin-top:2px;color:color-mix(in srgb,var(--warn,#C65A3A) 80%,var(--ink))}
+.acc-note.acc-restricted .lock-ic{color:color-mix(in srgb,#7C4FA8 75%,var(--ink))}
+.acc-note b{display:block;font-size:var(--fs-meta);margin-bottom:2px}
+.acc-note p{margin:0;font-size:var(--fs-meta);line-height:1.45;color:var(--muted)}
+.rs-bar .facets{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media (max-width:640px){.rs-bar .facets{grid-template-columns:1fr 1fr}}
