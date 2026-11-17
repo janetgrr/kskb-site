@@ -215,7 +215,9 @@ function renderRP(n, el, head){
   el.innerHTML = head.replace(`<h1>${esc(n.t)}</h1>`, `<h1>${esc(n.t.split(':')[0])}</h1>`) + `${intro ? `<p class="lede rp-intro">${esc(intro.textContent.trim())}</p>` : ''}
     <div class="rp-tabs" role="tablist">${ex.length ? `<button type="button" class="rp-tab" role="tab" data-sec="details">${dti('details', 'dt-tab')}<b>Details</b></button>` : ''}${secs.map(x => `<button type="button" class="rp-tab${x.timed ? ' timed' : ''}" role="tab" data-sec="${x.i}">${dti(dtKey(x.label), "dt-tab")}<b>${esc(x.label)}</b>${x.sub ? `<span>${esc(x.sub)}</span>` : x.stops.length ? `<span>${x.stops.length} ${x.stops.length === 1 ? 'stop' : 'stops'}</span>` : ''}</button>`).join('')}</div>
     ${secs.map(panel).join('')}${ex.length ? `<div class="rp-panel rp-details" role="tabpanel" data-sec="details" hidden><div class="rp-head">${dti('details', 'dt-lg')}<div><h2 class="rp-h">Details</h2><p class="rp-exp">Background for when you go further: how it is built, how to keep up, and the mistakes to skip.</p></div></div><div class="rp-dgrid">${ex.map(x => `<section class="rp-dsec"><h3>${dti(dtKey(x.label), 'dt-sm')}${esc(x.label)}</h3><div class="prose">${x.html}</div></section>`).join('')}</div></div>` : ''}${strip('note', 'the notes table; a reading path shown as tabs, one per section, each stop linked to its card and the original')}`;
-  const sel = i => { $$('#p-detail .rp-tab').forEach(b => { const on = b.dataset.sec === String(i); b.classList.toggle('on', on); b.setAttribute('aria-selected', on); });
+  const ink = () => { const t = $('#p-detail .rp-tabs'), on = t && t.querySelector('.rp-tab.on'); if(!on) return; let k = t.querySelector('.rp-ink'); if(!k){ k = document.createElement('span'); k.className = 'rp-ink'; k.setAttribute('aria-hidden', 'true'); t.appendChild(k); } k.style.width = (on.offsetWidth - 24) + 'px'; k.style.transform = `translate(${on.offsetLeft + 12}px, ${on.offsetTop + on.offsetHeight - 2}px)`; };
+  window.addEventListener('resize', ink);
+  const sel = i => { $$('#p-detail .rp-tab').forEach(b => { const on = b.dataset.sec === String(i); b.classList.toggle('on', on); b.setAttribute('aria-selected', on); }); requestAnimationFrame(ink);
     $$('#p-detail .rp-panel').forEach(pn => { pn.hidden = pn.dataset.sec !== String(i); }); try { sessionStorage.setItem('kskb-sec', String(i)); } catch(e){}
     document.dispatchEvent(new CustomEvent('rp-tab', {detail: i})); };
   const count = () => $$('#p-detail .rp-panel').forEach(pn => { const all = pn.querySelectorAll('.rp-stop').length, dn = pn.querySelectorAll('.rp-stop.done').length, c = pn.querySelector('.rp-count'); if(c) c.textContent = `${dn} of ${all} done`; });
@@ -231,7 +233,7 @@ function saveSecPath(a){ const pth = a.dataset.note; const secs = pathSecs(pth);
   try { sessionStorage.setItem('kskb-path', JSON.stringify({label: ($('#starthere h2') || {}).textContent || 'Reading path', note: pth, secs: secs.map(x => ({i: x.i, when: x.when}))})); sessionStorage.setItem('kskb-sec', a.dataset.sec); } catch(e){} }
 function go(id, arg){
   if(id.includes(':') && arg === undefined){ [id, arg] = [id.split(':')[0], id.split(':').slice(1).join(':')]; }
-  if(id === 'lens'){ who = Object.assign({}, who, {role: arg && arg !== 'none' ? arg : null}); remember(who.role ? 'lens' : 'home', who.role || undefined); $$('.page').forEach(p => p.classList.toggle('on', p.id === 'p-home')); $$('.links button').forEach(b => b.classList.toggle('active', b.dataset.go === 'home')); renderHome(); wire(); return; }
+  if(id === 'lens'){ who = Object.assign({}, who, {role: arg && arg !== 'none' ? arg : null}); remember(who.role ? 'lens' : 'home', who.role || undefined); $$('.page').forEach(p => p.classList.toggle('on', p.id === 'p-home')); $$('.links button').forEach(b => b.classList.toggle('active', b.dataset.go === 'home')); smooth(() => { renderHome(); wire(); }); return; }
   const DETAIL = {item: renderItem, topic: renderTopic, role: renderRole, note: renderNote};
   remember(DETAIL[id] ? id : (PAGES.includes(id) ? id : 'home'), DETAIL[id] ? arg : undefined);
   if(DETAIL[id]){ $$('.page').forEach(p => p.classList.toggle('on', p.id === 'p-detail')); $$('.links button').forEach(b => b.classList.remove('active')); DETAIL[id](arg); coverize($('#p-detail')); wire(); landScroll(); return; }
@@ -537,6 +539,8 @@ function lensSwap(){ const hs = $('#homesections'); if(!hs) return; hs.classList
   $$('#homesections .carousel').forEach(c => [...c.children].forEach((x, i) => x.style.setProperty('--i', Math.min(i, 6))));
   $$('#homesections > .home-sec').forEach((x, i) => x.style.setProperty('--s', i));
   const on = $('#p-home .rolerow.on'); if(on){ on.classList.remove('lens-pick'); void on.offsetWidth; on.classList.add('lens-pick'); } }
+// Picker changes morph instead of snapping (View Transitions where supported; a plain swap elsewhere or with reduced motion).
+function smooth(fn){ const y = window.scrollY; const done = () => { fn(); window.scrollTo({top: y, behavior: 'instant'}); }; if(!document.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches) return done(); document.startViewTransition(done); }
 function renderHome(){
   const c = D.counts; const r = who.role ? roleOf(who.role) : null;
   const stN = r ? startOf(r).notes : [];
@@ -584,7 +588,7 @@ function renderHome(){
   <div class="foot-bottom"><span>© 2026 KERISuite Knowledge Base · kskb.dev, in preview</span><span>Code Apache 2.0 · content CC BY 4.0</span><span>With thanks to KERISSE — Kor Dwarshuis &amp; Henk van Cann</span></div></footer>`;
   $$('#p-home [data-lens]').forEach(b => b.addEventListener('click', () => { const cur = who.role; const y = window.scrollY; go('lens', cur === b.dataset.lens ? 'none' : b.dataset.lens); window.scrollTo({top: y, behavior: 'instant'}); lensSwap(); }));
   $$('#starthere .spath-step').forEach(a => a.addEventListener('click', () => a.dataset.note && saveSecPath(a)));
-  $$('#p-home [data-fam]').forEach(b => b.addEventListener('click', () => { fam = b.dataset.fam; try { localStorage.setItem('kskb-fam', fam); } catch(e){} const y = window.scrollY; renderHome(); wire(); window.scrollTo({top: y, behavior: 'instant'}); lensSwap(); }));
+  $$('#p-home [data-fam]').forEach(b => b.addEventListener('click', () => { fam = b.dataset.fam; try { localStorage.setItem('kskb-fam', fam); } catch(e){} smooth(() => { renderHome(); wire(); }); lensSwap(); }));
   $$('#p-home [data-roletoggle]').forEach(b => b.addEventListener('click', () => { rolesHidden = !rolesHidden; const g = $('#p-home .hero-grid'); if(g){ g.classList.remove('intro'); g.classList.toggle('roles-off', rolesHidden); } const t = $('#p-home .rolelist-toggle'); if(t) t.textContent = rolesHidden ? 'Show' : 'Hide'; }));
   { const hsq = $('#hsq'); if(hsq){ let tm; hsq.addEventListener('input', () => { clearTimeout(tm); const v = hsq.value; const res = $('#homeresults');
       if(v.trim() && res){ res.hidden = false; const hs = $('#homesections'); if(hs) hs.hidden = true; if(!res.querySelector('.skel')) res.innerHTML = `<div class="skel"><div class="sk sk-h"></div>${'<div class="sk-row"><div class="sk sk-ic"></div><div class="sk-tx"><div class="sk sk-l"></div><div class="sk sk-s"></div></div><div class="sk sk-c"></div></div>'.repeat(5)}</div>`; }
