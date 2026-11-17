@@ -263,7 +263,12 @@ function closeCard(){ $('#drawer').classList.remove('on'); }
 // Breadcrumbs follow your train of thought: the pages you came through this visit, cut back when you return to one.
 let trail = []; try { trail = JSON.parse(sessionStorage.getItem('kskb-trail') || '[]'); } catch(e){}
 const plain = h => { const d = document.createElement('div'); d.innerHTML = h; return d.textContent.trim(); };
-function crumbs(a, b){
+// Breadcrumbs are always title case (Janet, 16 November 2026). Short words stay lower; acronyms and mixed-case names (KERI, vLEI, did:) stay as written.
+const SMALL = new Set(['a', 'an', 'the', 'and', 'or', 'nor', 'but', 'of', 'to', 'in', 'on', 'for', 'at', 'by', 'as', 'via', 'vs']);
+const tcase = t => t.split(/(\s+)/).map((w, i, arr) => { if(/^\s+$/.test(w) || !w) return w; if(/[a-z][A-Z]|[0-9]|:/.test(w) || (/^[A-Z]{2,4}$/.test(w))) return w; const lw = w.toLowerCase(); if(i > 0 && i < arr.length - 1 && SMALL.has(lw)) return lw; return lw.replace(/^([^a-z]*)([a-z])/, (m, p1, c) => p1 + c.toUpperCase()); }).join('');
+const caseCrumbs = html => { const d = document.createElement('div'); d.innerHTML = html; const w = document.createTreeWalker(d, NodeFilter.SHOW_TEXT); let n; while((n = w.nextNode())) if(n.nodeValue.trim() && n.nodeValue.trim() !== '›') n.nodeValue = n.nodeValue.replace(/[^›]+/g, seg => seg.replace(/\S.*\S|\S/, m => tcase(m))); return d.innerHTML; };
+function crumbs(a, b){ return caseCrumbs(crumbsRaw(a, b)); }
+function crumbsRaw(a, b){
   const cur = location.hash || ''; const ic = cur.startsWith('#item/') && byId[decodeURIComponent(cur.slice(6))]; const t = ic ? friendly(ic.n) : plain(b || a);
   if(cur && !/^#(home)?$/.test(cur)){ const i = trail.findIndex(x => x.h === cur); if(i >= 0){ trail = trail.slice(0, i + 1); trail[i].t = t; } else trail.push({h: cur, t}); trail = trail.slice(-6); try { sessionStorage.setItem('kskb-trail', JSON.stringify(trail)); } catch(e){} }
   const prev = trail.slice(0, -1);
@@ -359,7 +364,16 @@ const linkRefs = h => String(h || '').replace(/\[([a-z0-9][a-z0-9.-]*)\]/g, (m, 
 function renderNote(path){
   const n = byPath[path]; const el = $('#p-detail'); if(!n){ el.innerHTML = crumbs('Notes') + `<h1>No such note</h1><p class="note">Nothing in this copy at <code>${esc(path)}</code>.</p>`; return; }
   const head = crumbs('<button class="link" data-go="notes">Notes</button>', esc(n.p.split('/')[0])) + `<h1>${esc(n.t)}</h1>`;
-  if(!canRead(n)){ el.innerHTML = head + `<div class="panel"><h3>Shared with the reviewers</h3><p>This note is marked <b>partner</b>: it travels to the core group's copy and is not on the public site. Sign in as a reviewer to read it here, or wait for the publication decision, which may mark it public.</p><p><button class="link" id="asRev">View as a reviewer</button> · <button class="link" data-go="access">What each tier sees</button></p></div>${strip('note')}`; const b = $('#asRev'); if(b) b.addEventListener('click', () => { setWho('reviewer'); go('note', path); }); return; }
+  if(!canRead(n)){
+    // Gentler partner screen (Janet, 16 November 2026): what the note covers, who it is for, what to do next, and somewhere open to go instead.
+    const secs = n.h ? [...new DOMParser().parseFromString(n.h, 'text/html').querySelectorAll('h2')].map(h => h.textContent.trim()).filter(Boolean).slice(0, 6) : [];
+    const words = (n.t || '').toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length > 3 && !['keri', 'suite', 'knowledge', 'base', 'index', 'note', 'notes'].includes(w)).join(' ');
+    const rel = (words ? D.cards.filter(c => c.acc === 'public').map(c => [c, matchScore(cardText(c), words)]).filter(x => x[1] >= 1).sort((x, y) => y[1] - x[1]).map(x => x[0]) : []).concat(D.cards.filter(c => c.acc === 'public' && c.l === 'intro')).filter((c, i, arr) => arr.indexOf(c) === i).slice(0, 3);
+    el.innerHTML = head + `<div class="pn-card"><div class="pn-top">${LOCK}<div><b>Shared with the core reviewers for now</b><p>This note is written for the people reviewing the knowledge base. It is not on the public site yet; once the review is done it may be made public for everyone.</p></div></div>`
+      + (secs.length ? `<div class="pn-secs"><span class="pn-lab">What it covers</span><ul>${secs.map(t => `<li>${esc(t)}</li>`).join('')}</ul></div>` : '')
+      + `<div class="pn-acts"><button type="button" class="pn-btn" id="asRev">Sign in as a reviewer</button><button type="button" class="link" data-go="access">Who can read what</button></div></div>`
+      + (rel.length ? `<section class="pn-rel"><h2>Open to everyone in the meantime</h2>${cardRows(rel)}</section>` : '') + strip('note');
+    const b = $('#asRev'); if(b) b.addEventListener('click', () => { setWho('reviewer'); go('note', path); }); return; }
   if(!n.h){ el.innerHTML = head + `<p class="note">A generated index; its content is this site's own views: <button class="link" data-go="topics">Topics</button>, <button class="link" data-go="cards">Every card</button>, <button class="link" data-go="timeline">Timeline</button>.</p>${strip('note')}`; return; }
   if(pathSecs(n.p).length >= 2){ renderRP(n, el, head); return; }
   el.innerHTML = head + `<div class="prose note-body">${linkRefs(n.h)}</div>${strip('note', 'the notes table; the body rendered from Markdown at build time, wikilinks resolved to the notes in this copy')}`;

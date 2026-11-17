@@ -1498,3 +1498,20 @@ html.sx-lock{overflow:hidden}
 .acc-note p{margin:0;font-size:var(--fs-meta);line-height:1.45;color:var(--muted)}
 .rs-bar .facets{grid-template-columns:repeat(4,minmax(0,1fr))}
 @media (max-width:640px){.rs-bar .facets{grid-template-columns:1fr 1fr}}
+
+/* Partner-note screen: a calm info card, not an error */
+.pn-card{max-width:720px;margin:8px 0 0;padding:clamp(18px,3vw,26px);border-radius:var(--r);background:color-mix(in srgb,#7C4FA8 8%,var(--surface));border:1px solid color-mix(in srgb,#7C4FA8 26%,var(--surface))}
+.pn-top{display:flex;gap:12px;align-items:flex-start}
+.pn-top .lock-ic{width:20px;height:20px;margin-top:2px;color:color-mix(in srgb,#7C4FA8 75%,var(--ink))}
+.pn-top b{display:block;font-size:var(--fs-body);margin-bottom:4px}
+.pn-top p{margin:0;color:var(--muted);font-size:var(--fs-meta);line-height:1.5}
+.pn-secs{margin:18px 0 0 32px}
+.pn-lab{display:block;font-size:var(--fs-label);font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.pn-secs ul{margin:0;padding-left:18px;font-size:var(--fs-meta);line-height:1.6}
+.pn-acts{display:flex;flex-wrap:wrap;align-items:center;gap:16px;margin:20px 0 0 32px}
+.pn-btn{border:0;border-radius:999px;padding:10px 18px;background:var(--grad);color:#fff;font:inherit;font-weight:600;cursor:pointer}
+.pn-rel{margin-top:clamp(32px,5vw,48px)}
+@media (max-width:560px){.pn-secs,.pn-acts{margin-left:0}}
+/* Dark mode: chips on solid color fills (Explore by source & setting) use white text */
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .xcard-tags .card-chip{color:#fff}}
+:root[data-theme="dark"] .xcard-tags .card-chip{color:#fff}
