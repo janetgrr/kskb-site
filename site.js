@@ -258,7 +258,17 @@ function openCardDrawer(id){
   d.classList.add('on'); wire();
 }
 function closeCard(){ $('#drawer').classList.remove('on'); }
-function crumbs(a, b){ return `<p class="crumbs"><button class="link" data-go="home">Home</button> › ${a}${b ? ' › ' + b : ''}</p>`; }
+// Breadcrumbs follow your train of thought: the pages you came through this visit, cut back when you return to one.
+let trail = []; try { trail = JSON.parse(sessionStorage.getItem('kskb-trail') || '[]'); } catch(e){}
+const plain = h => { const d = document.createElement('div'); d.innerHTML = h; return d.textContent.trim(); };
+function crumbs(a, b){
+  const cur = location.hash || ''; const ic = cur.startsWith('#item/') && byId[decodeURIComponent(cur.slice(6))]; const t = ic ? friendly(ic.n) : plain(b || a);
+  if(cur && !/^#(home)?$/.test(cur)){ const i = trail.findIndex(x => x.h === cur); if(i >= 0){ trail = trail.slice(0, i + 1); trail[i].t = t; } else trail.push({h: cur, t}); trail = trail.slice(-6); try { sessionStorage.setItem('kskb-trail', JSON.stringify(trail)); } catch(e){} }
+  const prev = trail.slice(0, -1);
+  if(!prev.length) return `<p class="crumbs"><button class="link" data-go="home">Home</button> › ${a}${b ? ' › ' + b : ''}</p>`;
+  const shown = prev.slice(-3), cut = prev.length > shown.length;
+  return `<p class="crumbs crumbs-trail" title="The pages you came through"><button class="link" data-go="home">Home</button> › ${cut ? '<span class="crumbs-more">…</span> › ' : ''}${shown.map(x => `<a href="${esc(x.h)}">${esc(x.t.length > 32 ? x.t.slice(0, 30).trim() + '…' : x.t)}</a> › `).join('')}<span class="crumbs-cur">${esc(t)}</span></p>`;
+}
 const shortType = t => (TYPE[t] || t).replace(/\s*\(.*\)$/, '');
 const fmtDate = d => { if(!d) return ''; const [y, m, dd] = d.split('-').map(Number); return (m ? MON[m - 1] + ' ' : '') + (dd ? dd + ', ' : '') + y; };
 function cardRows(rows){
@@ -296,7 +306,7 @@ function renderItem(id){
   el.innerHTML = crumbs(`<a href="#topic/${esc(c.tp[0] || '')}">${esc(TOPIC[c.tp[0]] || 'Cards')}</a>`, esc(st)) + `
   <div class="li-cover ${cls}"><span class="li-cover-ic">${typeIc(c.t)}</span><div class="li-cover-tx"><h1>${esc(c.n)}</h1><div class="li-meta"><span class="card-chip ${cls}">${esc(st)}</span>${c.l ? `<span class="chip lv">${esc(LEVEL[c.l] || c.l)}</span>` : ''}${c.e ? `<span class="chip ev">${esc(tc(c.e))}</span>` : ''}${c.d ? `<span class="li-dot">${esc(fmtDate(c.d))}</span>` : ''}${c.au ? `<span class="li-dot">${esc(c.au)}</span>` : ''}</div></div></div>
   <div class="li-grid"><div class="li-main">
-    <div class="li-hl">${hl(I('user'), 'Who it’s for', esc(LEVEL[c.l] ? LEVEL[c.l] + ' — ' + (lvM || '') : 'Not labeled yet'))}${hl(I('shield'), 'How much to trust it', esc(c.e ? c.e.charAt(0).toUpperCase() + c.e.slice(1) + (EVID[c.e] ? ' — ' + EVID[c.e] : '') : 'Not labeled yet'))}${hl(svgIc(TYPEIC.organization), 'Where it’s from', esc(c.m || 'Unknown'))}</div>
+    <div class="li-hl ${cls}">${hl(I('user'), 'Who it’s for', esc(LEVEL[c.l] ? LEVEL[c.l] + ' — ' + (lvM || '') : 'Not labeled yet'))}${hl(I('shield'), 'How much to trust it', esc(c.e ? c.e.charAt(0).toUpperCase() + c.e.slice(1) + (EVID[c.e] ? ' — ' + EVID[c.e] : '') : 'Not labeled yet'))}${hl(svgIc(TYPEIC.organization), 'Where it’s from', esc(c.m || 'Unknown'))}</div>
     <section class="li-sec"><h2>Overview</h2>${c.a ? `<p class="li-about">${esc(c.a)}</p>` : '<p class="note">No abstract yet — a reviewer may write one.</p>'}</section>
     ${c.tp.length ? `<section class="li-sec"><h2>Topics</h2><div class="li-tags">${c.tp.map(t => `<a class="li-tag" href="#topic/${esc(t)}">${esc(TOPIC[t] || t)}</a>`).join('')}</div></section>` : ''}
     ${c.ro.length ? `<section class="li-sec"><h2>Good for</h2><div class="li-tags">${c.ro.map(x => `<a class="li-tag" href="#role/${esc(x)}">${esc((roleOf(x) || {}).label || x)}</a>`).join('')}</div></section>` : ''}
@@ -810,7 +820,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Deep links (4 November 2026): #item/<id>, #topic/<id>, #role/<id> and #note/<path>, the forms the page's own anchors use, open on load and on a hash change, so that a card page at /cards/<id>/ can send a browser to its card. Nothing else about the routes changes.
   const routeOf = h => { const m = /^(item|topic|role|note|lens)\/(.+)$/.exec(h); return m ? [m[1], decodeURIComponent(m[2])] : null; };
   const h = (location.hash || '').replace('#', ''); const r0 = routeOf(h); try{ history.replaceState(r0 ? {id: r0[0], arg: r0[1]} : {id: PAGES.includes(h) ? h : 'home', arg: null}, ''); }catch(e){} HIST = true; if(r0) go(r0[0], r0[1]); else go(PAGES.includes(h) ? h : 'home'); HIST = false;
-  window.addEventListener('hashchange', () => { const k = (location.hash || '').replace('#', ''); const r = routeOf(k); if(r) go(r[0], r[1]); else if(PAGES.includes(k)) go(k); });
+  window.addEventListener('hashchange', () => { const k = (location.hash || '').replace('#', ''); if(!k || k === 'home'){ trail = []; try { sessionStorage.removeItem('kskb-trail'); } catch(e){} } const r = routeOf(k); if(r) go(r[0], r[1]); else if(PAGES.includes(k)) go(k); });
 });
 
 // Custom dropdowns: replace native select menus with site-styled popovers (the select stays as the source of truth)
@@ -845,3 +855,25 @@ document.addEventListener('click', e => {
   go('home');
   window.scrollTo({top: 0, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'});
 });
+
+// Home microanimations: sections rise in once, arrows fade at a carousel's end.
+(() => {
+  const home = document.getElementById('p-home'); if(!home) return;
+  const seen = new Set(); const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const io = 'IntersectionObserver' in window ? new IntersectionObserver(es => es.forEach(e => { if(e.isIntersecting){ e.target.classList.add('mo-in'); e.target.classList.remove('mo-pre'); io.unobserve(e.target); } }), {rootMargin: '0px 0px -8% 0px'}) : null;
+  const run = () => {
+    home.querySelectorAll('.home-sec').forEach(s => {
+      s.querySelectorAll('.carousel,.cards,.xcards').forEach(c => [...c.children].forEach((k, i) => k.style.setProperty('--i', Math.min(i, 8))));
+      const key = (s.querySelector('h2') || {}).textContent || s.id;
+      if(calm || !io || seen.has(key)){ s.classList.add('mo-in'); return; }
+      seen.add(key); s.classList.add('mo-pre'); io.observe(s);
+    });
+    home.querySelectorAll('.home-sec').forEach(s => {
+      const car = s.querySelector('.carousel'); const bs = s.querySelectorAll('.car-btn'); if(!car || !bs.length) return;
+      const upd = () => { const max = car.scrollWidth - car.clientWidth - 2; bs.forEach(b => b.classList.toggle('end', b.dataset.car === '-1' ? car.scrollLeft <= 2 : car.scrollLeft >= max)); };
+      car.addEventListener('scroll', upd, {passive: true}); upd();
+    });
+  };
+  new MutationObserver(() => { clearTimeout(run.t); run.t = setTimeout(run, 0); }).observe(home, {childList: true});
+  run();
+})();
