@@ -1480,3 +1480,8 @@ html.sx-lock{overflow:hidden}
 @keyframes rpFade{from{opacity:0}to{opacity:1}}
 @keyframes rpTick{from{opacity:0;transform:translateY(-1px) rotate(-45deg) scale(.4)}to{opacity:1;transform:translateY(-1px) rotate(-45deg) scale(1)}}
 @keyframes rpIcon{from{opacity:0;transform:scale(.7) rotate(-10deg)}to{opacity:1;transform:none}}
+/* Dark mode: type chips and icon tiles get dark tinted backgrounds and lighter text, instead of the light-mode pastels */
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) [class*="cc-"]{--cbg:color-mix(in srgb,var(--cfg) 22%,var(--surface));--cfg-d:color-mix(in srgb,var(--cfg) 70%,#fff)}:root:not([data-theme="light"]) :is(.card-chip,.card-ic)[class*="cc-"],:root:not([data-theme="light"]) [class*="cc-"] :is(.card-chip,.card-ic){color:var(--cfg-d)}:root:not([data-theme="light"]) .rp-open{border:1px solid var(--line)}}
+:root[data-theme="dark"] [class*="cc-"]{--cbg:color-mix(in srgb,var(--cfg) 22%,var(--surface));--cfg-d:color-mix(in srgb,var(--cfg) 70%,#fff)}
+:root[data-theme="dark"] :is(.card-chip,.card-ic)[class*="cc-"],:root[data-theme="dark"] [class*="cc-"] :is(.card-chip,.card-ic){color:var(--cfg-d)}
+:root[data-theme="dark"] .rp-open{border:1px solid var(--line)}
